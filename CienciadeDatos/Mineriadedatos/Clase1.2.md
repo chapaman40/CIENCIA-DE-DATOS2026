@@ -9,6 +9,8 @@ El proceso KDD (Knowledge Discovery in Databases) se aplicaría de la siguiente 
 3. **Transformación:** Las variables categóricas de texto (`Plan` y `Estado_Cuenta`) deberían ser convertidas a valores numéricos para que un algoritmo pueda procesarlas.
 4. **Minería de Datos (Modeling):** Aplicar modelos (como árboles de decisión o regresión logística) para descubrir qué tipo de cliente tiende a ser moroso.
 5. **Interpretación/Evaluación:** Analizar los resultados del modelo para validar y obtener "conocimiento" útil para el negocio, como por ejemplo: "clientes con más de 2 reclamos tienden a ser morosos".
+
+
 ------------------------------------------------------------------------------------------
   B.¿Qué pasos seguirías antes de extraer patrones y qué fase de CRISP-DM corresponde?
 Antes de aplicar algoritmos para extraer patrones (fase de *Modeling* en CRISP-DM), seguiría estos pasos:
