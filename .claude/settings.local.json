@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c \":*)",
-      "Bash(python create_clase4_act2.py)",
-      "Bash(jupyter nbconvert:*)"
-    ]
-  }
-}
