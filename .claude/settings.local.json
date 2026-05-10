@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python gen_viz_integrador.py)",
+      "Bash(jupyter nbconvert *)"
+    ]
+  }
+}
