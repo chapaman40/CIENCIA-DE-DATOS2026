@@ -1,0 +1,19 @@
+# --- Stack de Ciencia de Datos (núcleo del proyecto) ---
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+scipy
+jupyter
+notebook
+
+# --- Utilidades de la plantilla CCDS ---
+python-dotenv
+loguru
+tqdm
+typer
+ruff
+
+# --- Testing ---
+pytest

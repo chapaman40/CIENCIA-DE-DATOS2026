@@ -1,0 +1,30 @@
+# Normalización de saltos de línea
+# Todos los archivos de texto se almacenan como LF en el repositorio y se
+# extraen como LF en el working tree (consistente en Windows/Linux/Mac).
+# Esto silencia los warnings "LF will be replaced by CRLF" en Windows.
+* text=auto eol=lf
+
+# --- Código y texto (explícito, LF) ---
+*.py     text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+*.toml   text eol=lf
+*.cfg    text eol=lf
+*.ini    text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.csv    text eol=lf
+*.ipynb  text eol=lf
+
+# El Makefile requiere tabs reales; LF obligatorio
+Makefile text eol=lf
+
+# --- Archivos binarios (sin conversión de saltos de línea) ---
+*.joblib  binary
+*.parquet binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.pdf     binary
+*.pyc     binary
