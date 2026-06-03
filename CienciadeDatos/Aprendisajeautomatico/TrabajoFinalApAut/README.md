@@ -15,18 +15,18 @@ metodología **RFM** (Recency, Frequency, Monetary) con algoritmos de **clusteri
 ![Pareto comercial — % clientes vs % facturación por segmento](reports/figures/nb5_pareto_comercial.png)
 
 Se identificaron **4 segmentos** mediante K-Means sobre features RFM deflactadas. El hallazgo
-clave es un Pareto comercial marcado: el **15.4 % de los clientes (Campeones B2B) explica
-el 76.7 % de la facturación real**.
+clave es un Pareto comercial marcado: el **13.8 % de los clientes (Campeones B2B) explica
+el 73.1 % de la facturación real**.
 
 | Segmento | n | % Clientes | % Facturación real |
 |----------|---|-----------|--------------------|
-| 🏆 Campeones (B2B) | 154 | 15.4 % | **76.7 %** |
-| 🛒 Activos Recientes | 306 | 30.6 % | 16.4 % |
-| ⚠️ Esporádicos / En Riesgo | 322 | 32.2 % | 5.6 % |
-| 💤 Perdidos | 217 | 21.7 % | 1.2 % |
+| 🏆 Campeones (B2B) | 691 | 13.8 % | **73.1 %** |
+| 🛒 Activos Recientes | 1.697 | 34.0 % | 19.0 % |
+| ⚠️ Esporádicos / En Riesgo | 1.694 | 33.9 % | 6.9 % |
+| 💤 Perdidos | 910 | 18.2 % | 1.0 % |
 
 ## Datos
-- `data/raw/transacciones_ecommerce.csv` — **10.321 transacciones, 1.000 clientes**, período 2024-06 a 2026-05.
+- `data/raw/transacciones_ecommerce.csv` — **50.730 transacciones, 5.000 clientes**, período 2024-06 a 2026-05.
 - `references/DESCRIPCION_dataset_v2.md` — diccionario de datos (columnas, tipos, origen).
 - `references/glosario.md` — glosario de términos (RFM, Silhouette, deflactación, etc.).
 - Las variables RFM no vienen en el CSV: se **derivan** agrupando por `id_cliente`.
@@ -61,8 +61,8 @@ jupyter notebook
 
 | Path | Contenido |
 |------|-----------|
-| `data/interim/transacciones_limpias.parquet` | Dataset limpio (10.132 transacciones tras filtros) |
-| `data/processed/clientes_rfm.parquet` | Tabla cliente con RFM + complementarias (999 clientes) |
+| `data/interim/transacciones_limpias.parquet` | Dataset limpio (49.909 transacciones tras filtros) |
+| `data/processed/clientes_rfm.parquet` | Tabla cliente con RFM + complementarias (4.992 clientes) |
 | `data/processed/clientes_segmentados_nombrados.parquet` | + etiqueta cluster + segmento comercial |
 | `models/modelo_final_kmeans.joblib` | Modelo K-Means de producción |
 | `models/scaler.joblib` | StandardScaler ajustado sobre FEATURES_CLUSTERING |
@@ -173,8 +173,8 @@ Por motivos de estricta confidencialidad corporativa y protección de datos sens
 Los datos generados no son meramente aleatorios, sino que replican fielmente las lógicas y dinámicas observables en la provincia entre el 7 de junio de 2024 y el 31 de mayo de 2026. Esto incluye la inyección del modelado de inflación en pesos argentinos, la marcada estacionalidad de la construcción austral (con picos marcados de diciembre a marzo y pozos profundos de junio a agosto), y los patrones de concentración de facturación en segmentos B2B (constructoras y contratistas) siguiendo una distribución de Pareto.
 6.2. Descripción Estructural del Conjunto de Datos
 El dataset presenta un formato tabular estándar y está compuesto por las siguientes dimensiones principales:
-•	Cantidad de Instancias (Filas): 10.321 transacciones. (Nota metodológica: se conservaron intencionalmente 15 duplicados exactos para poder efectuar evaluaciones en la fase de limpieza).
-•	Cantidad de Clientes: 1.000 clientes únicos. 
+•	Cantidad de Instancias (Filas): 50.730 transacciones. (Nota metodológica: se conservaron intencionalmente 75 duplicados exactos para poder efectuar evaluaciones en la fase de limpieza).
+•	Cantidad de Clientes: 5.000 clientes únicos. 
 •	Características (Columnas): 9 variables de negocio.
 El diccionario de datos :
 1.	id_transaccion (String): Código único alfanumérico para cada venta (formato TX-XXXXXX). Contiene huecos deliberados en la numeración simulando operaciones no concretadas.

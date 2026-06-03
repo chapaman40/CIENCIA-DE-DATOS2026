@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Segmentación de Clientes · Trabajo Final de Aprendizaje Automático · Ian Gallego</title>
+<style>
+/* ============ FUENTES (vendorizadas, offline) ============ */
+@font-face{font-family:'Archivo';src:url('fonts/archivo-800.woff2') format('woff2');font-weight:800;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('fonts/archivo-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Plex';src:url('fonts/plexsans-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Plex';src:url('fonts/plexsans-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Plex';src:url('fonts/plexsans-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'PlexMono';src:url('fonts/plexmono-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+
+/* ============ DESIGN TOKENS ============ */
+:root{
+  --bg:#0C1316; --bg2:#101A1E; --panel:#142027; --panel2:#18272F;
+  --ink:#ECF2F2; --ink2:#C2D0D2; --muted:#8194A0; --faint:#5C6F79;
+  --line:rgba(255,255,255,.085); --line2:rgba(255,255,255,.14);
+  --amber:#F2A33C; --amber-hi:#FFC061; --amber-deep:#D67F22;
+  --steel:#56A8CC; --steel-deep:#2C6E8C;
+  --champ:#EFB53E; --active:#34B79B; --risk:#EC7A3C; --lost:#7E909A;
+  --good:#46C28A;
+  --fdisplay:'Archivo',system-ui,sans-serif;
+  --fbody:'Plex',system-ui,sans-serif;
+  --fmono:'PlexMono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#05090B;overflow:hidden;font-family:var(--fbody);color:var(--ink)}
+body{display:flex;align-items:center;justify-content:center}
+
+/* ============ STAGE (16:9 fija, escalada al viewport) ============ */
+#stage{position:absolute;top:50%;left:50%;width:1280px;height:720px;transform-origin:center center;
+  background:var(--bg);overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+
+/* blueprint grid */
+#stage::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:48px 48px;opacity:.5;
+  -webkit-mask-image:radial-gradient(ellipse 100% 90% at 70% 20%,#000 30%,transparent 100%);
+  mask-image:radial-gradient(ellipse 100% 90% at 70% 20%,#000 30%,transparent 100%)}
+
+/* ============ SLIDES ============ */
+.slide{position:absolute;inset:0;z-index:1;padding:62px 76px 58px;display:none;flex-direction:column;
+  opacity:0;transition:opacity .45s ease}
+.slide.active{display:flex;opacity:1}
+
+/* chrome */
+.kick{position:absolute;top:40px;left:76px;display:flex;align-items:center;gap:10px;
+  font-family:var(--fmono);font-size:12.5px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+.kick .sq{width:9px;height:9px;background:var(--amber);box-shadow:0 0 12px rgba(242,163,60,.7)}
+.foot{position:absolute;left:76px;bottom:26px;font-family:var(--fmono);font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+.pageno{position:absolute;right:76px;bottom:26px;font-family:var(--fmono);font-size:11px;letter-spacing:.1em;color:var(--faint)}
+.pageno b{color:var(--amber)}
+.slide::after{content:"+";position:absolute;top:34px;right:40px;color:var(--faint);font-family:var(--fmono);font-size:18px;opacity:.5}
+
+/* type */
+h1{font-family:var(--fdisplay);font-weight:800;line-height:.98;letter-spacing:-.02em}
+h2{font-family:var(--fdisplay);font-weight:800;font-size:43px;line-height:1.02;letter-spacing:-.015em;color:var(--ink)}
+h2 .am{color:var(--amber)}
+.lead{font-size:18.5px;line-height:1.5;color:var(--ink2);font-weight:400}
+.mono{font-family:var(--fmono)}
+.title-wrap{margin-top:4px;margin-bottom:22px}
+.eyebrow{font-family:var(--fmono);font-size:12.5px;letter-spacing:.2em;color:var(--steel);text-transform:uppercase;margin-bottom:12px}
+
+/* entrance animation */
+[data-r]{opacity:0}
+.slide.active [data-r]{animation:rise .62s cubic-bezier(.18,.7,.2,1) both}
+body.qa [data-r]{opacity:1!important;animation:none!important}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes glow{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* ============ COVER ============ */
+#s1{padding:0}
+.cover-grid{position:absolute;inset:0;display:grid;grid-template-columns:1.15fr .85fr}
+.cover-left{padding:78px 0 64px 84px;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
+.cover-right{position:relative;overflow:hidden;border-left:1px solid var(--line)}
+.cover-tag{font-family:var(--fmono);font-size:13px;letter-spacing:.26em;color:var(--amber);text-transform:uppercase;margin-bottom:26px;display:flex;align-items:center;gap:12px}
+.cover-tag .ln{width:46px;height:2px;background:var(--amber)}
+#s1 h1{font-size:78px;color:var(--ink)}
+#s1 h1 .am{color:var(--amber);display:block}
+.cover-sub{margin-top:24px;font-size:21px;color:var(--ink2);max-width:560px;line-height:1.45}
+.cover-meta{margin-top:54px;display:flex;gap:38px;flex-wrap:wrap}
+.cover-meta .blk .l{font-family:var(--fmono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:5px}
+.cover-meta .blk .v{font-size:16px;color:var(--ink);font-weight:500}
+.cover-loc{position:absolute;left:84px;bottom:56px;font-family:var(--fmono);font-size:12px;letter-spacing:.14em;color:var(--faint)}
+#coverArt{position:absolute;inset:0;width:100%;height:100%}
+.cover-right::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 60% 40%,rgba(242,163,60,.10),transparent 60%)}
+
+/* ============ generic layouts ============ */
+.cols{display:grid;gap:26px;flex:1;min-height:0}
+.c-2{grid-template-columns:1fr 1fr}
+.c-58{grid-template-columns:1.25fr 1fr}
+.c-64{grid-template-columns:1.55fr 1fr}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px 26px;position:relative}
+.panel.dark{background:linear-gradient(160deg,#14222A,#0E181D)}
+.panel .ph{font-family:var(--fmono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);margin-bottom:14px}
+
+/* pain / feature cards */
+.cardgrid{display:grid;gap:14px}
+.cg-2{grid-template-columns:1fr 1fr}
+.minicard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:15px 17px}
+.minicard h4{font-family:var(--fdisplay);font-weight:600;font-size:16.5px;color:var(--ink);margin-bottom:5px}
+.minicard p{font-size:13px;color:var(--muted);line-height:1.4}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--accent,var(--amber))}
+.stat .num{font-family:var(--fdisplay);font-weight:800;font-size:46px;line-height:1;color:var(--ink);letter-spacing:-.02em}
+.stat .lab{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.3}
+
+/* bullet list */
+.blist{list-style:none;display:flex;flex-direction:column;gap:13px}
+.blist li{display:flex;gap:12px;font-size:15px;line-height:1.42;color:var(--ink2)}
+.blist li::before{content:"";flex:0 0 7px;height:7px;margin-top:8px;background:var(--amber);border-radius:1px}
+.blist.steel li::before{background:var(--steel)}
+
+/* pipeline */
+.pipe{display:flex;align-items:stretch;gap:0;flex:1}
+.step{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 16px;position:relative;display:flex;flex-direction:column}
+.step .no{font-family:var(--fmono);font-size:12px;color:var(--amber);letter-spacing:.1em}
+.step h4{font-family:var(--fdisplay);font-weight:600;font-size:16px;margin:8px 0 7px;color:var(--ink)}
+.step p{font-size:12.5px;color:var(--muted);line-height:1.38}
+.arrow{flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:20px}
+
+/* spec strip (organización) */
+.spec{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.spec .cell{padding:18px 20px;border-right:1px solid var(--line);background:var(--panel)}
+.spec .cell:last-child{border-right:none}
+.spec .k{font-family:var(--fmono);font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;margin-bottom:8px}
+.spec .v{font-size:15.5px;color:var(--ink);font-weight:500;line-height:1.35}
+.spec .v b{color:var(--amber);font-weight:600}
+
+/* chart container */
+.chart{width:100%;height:100%;display:block}
+.chartbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+
+/* segment legend */
+.segleg{display:flex;flex-direction:column;gap:11px}
+.segrow{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;border-left-width:4px}
+.segrow .dot{display:none}
+.segrow .nm{font-family:var(--fdisplay);font-weight:600;font-size:15.5px;color:var(--ink);flex:1}
+.segrow .meta{font-family:var(--fmono);font-size:12.5px;color:var(--muted);text-align:right;line-height:1.3}
+.segrow .meta b{color:var(--ink);font-size:14px}
+
+/* big number callout */
+.bignum{display:flex;align-items:baseline;gap:6px;font-family:var(--fdisplay);font-weight:800;letter-spacing:-.02em}
+.bignum .a{font-size:78px;color:var(--steel)}
+.bignum .arr{font-size:42px;color:var(--faint);margin:0 6px}
+.bignum .b{font-size:78px;color:var(--amber)}
+
+/* strategy cards */
+.stratgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;flex:1;min-height:0}
+.strat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 15px;display:flex;flex-direction:column;border-top:4px solid var(--c)}
+.strat .tag{font-family:var(--fmono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.strat h4{font-family:var(--fdisplay);font-weight:700;font-size:18px;margin:6px 0 5px;color:var(--c);line-height:1.04}
+.strat .perfil{font-family:var(--fmono);font-size:9.5px;color:var(--faint);line-height:1.5}
+.strat .sec{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.strat .sl{font-family:var(--fmono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--steel);margin-bottom:8px}
+.strat ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.strat ul li{font-size:11.7px;color:var(--ink2);line-height:1.34;padding-left:13px;position:relative}
+.strat ul li::before{content:"";position:absolute;left:0;top:6px;width:5px;height:5px;background:var(--c);border-radius:1px}
+.strat .kv{font-size:11.7px;color:var(--ink2);line-height:1.4;margin-bottom:6px}
+.strat .kv:last-child{margin-bottom:0}
+.strat .kv .t{font-family:var(--fmono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:2px}
+.strat .kv b{color:var(--ink);font-weight:600}
+.strat .foot2{margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.strat .foot2 .kpi{font-size:11.7px;color:var(--ink2);line-height:1.36;margin-bottom:9px}
+.strat .foot2 .kpi b{color:var(--ink);font-weight:600}
+.strat .prow{display:flex;align-items:center;justify-content:space-between}
+.strat .prow .pl{font-family:var(--fmono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.strat .pri{display:flex;gap:4px}
+.strat .pri i{width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.strat .pri i.on{background:var(--c)}
+
+/* conclusions */
+.concl{display:flex;flex-direction:column;gap:15px}
+.concl .item{display:flex;gap:15px;align-items:flex-start}
+.concl .n{font-family:var(--fdisplay);font-weight:800;font-size:26px;color:var(--amber);line-height:1;flex:0 0 auto;width:38px}
+.concl .tx{font-size:16px;line-height:1.45;color:var(--ink2)}
+.concl .tx b{color:var(--ink);font-weight:600}
+
+.future{margin-top:auto;background:linear-gradient(120deg,rgba(86,168,204,.12),transparent);border:1px solid var(--line);border-left:3px solid var(--steel);border-radius:10px;padding:16px 20px}
+.future .k{font-family:var(--fmono);font-size:11px;letter-spacing:.16em;color:var(--steel);text-transform:uppercase;margin-bottom:7px}
+.future p{font-size:14.5px;color:var(--ink2);line-height:1.45}
+
+.thanks{display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+
+/* tag chips */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.chip{font-family:var(--fmono);font-size:12px;letter-spacing:.06em;color:var(--ink2);background:var(--panel);border:1px solid var(--line2);border-radius:999px;padding:7px 14px}
+.chip b{color:var(--amber)}
+
+/* note */
+.note{font-size:12px;color:var(--faint);line-height:1.4;font-style:italic}
+
+/* ============ NAV UI ============ */
+#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--amber),var(--amber-hi));z-index:50;transition:width .45s cubic-bezier(.2,.7,.2,1);box-shadow:0 0 10px rgba(242,163,60,.6)}
+#dots{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:9px;z-index:50}
+#dots button{width:8px;height:8px;border-radius:50%;border:none;background:rgba(255,255,255,.22);cursor:pointer;padding:0;transition:.25s}
+#dots button.on{background:var(--amber);width:22px;border-radius:5px}
+#hint{position:fixed;bottom:42px;left:50%;transform:translateX(-50%);font-family:var(--fmono);font-size:11px;letter-spacing:.14em;color:rgba(255,255,255,.4);z-index:50;text-transform:uppercase;transition:opacity .6s;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div id="stage">
+
+  <!-- ====== 1 · COVER ====== -->
+  <section class="slide" id="s1">
+    <div class="cover-grid">
+      <div class="cover-left">
+        <div class="cover-tag"><span class="ln"></span>Trabajo Final · Aprendizaje Automático</div>
+        <h1>Segmentación<br>de Clientes<span class="am">con RFM + Clustering</span></h1>
+        <p class="cover-sub">Descubrir, sin etiquetas previas, los grupos de clientes de un e-commerce de ferretería para activar un marketing personalizado.</p>
+        <div class="cover-meta">
+          <div class="blk"><div class="l">Autor</div><div class="v">Ian Gallego</div></div>
+          <div class="blk"><div class="l">Institución</div><div class="v">Politécnico Malvinas Argentinas</div></div>
+          <div class="blk"><div class="l">Año</div><div class="v">2026</div></div>
+        </div>
+        <div class="cover-loc">◷ Tierra del Fuego, Argentina · Aprendizaje no supervisado</div>
+      </div>
+      <div class="cover-right"><svg id="coverArt" viewBox="0 0 520 720" preserveAspectRatio="xMidYMid slice"></svg></div>
+    </div>
+  </section>
+
+  <!-- ====== 2 · PROBLEMA ====== -->
+  <section class="slide" id="s2">
+    <div class="kick"><i class="sq"></i><span>01 / Introducción — El problema</span></div>
+    <div class="title-wrap" data-r>
+      <h2>Una cartera muy diversa,<br>tratada como si fuera <span class="am">una sola</span>.</h2>
+    </div>
+    <div class="cols c-58">
+      <div class="panel" data-r>
+        <div class="ph">Contexto</div>
+        <p class="lead">En un e-commerce de ferretería y materiales de construcción de Tierra del Fuego conviven dos mundos: <b style="color:var(--ink)">constructoras y contratistas (B2B)</b> de altísimo volumen, y <b style="color:var(--ink)">particulares (B2C)</b> con compras puntuales.</p>
+        <p class="lead" style="margin-top:16px">Hoy las promociones, el mailing y los mensajes de WhatsApp se envían <b style="color:var(--amber)">masivos y uniformes</b> a toda la base.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:16px;border-top:1px solid var(--line);padding-top:18px">
+          <div class="bignum" style="line-height:1"><span class="b" style="font-size:52px">+10–30%</span></div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.4">mejora potencial de conversión<br>con personalización basada en datos</div>
+        </div>
+      </div>
+      <div class="cardgrid" data-r style="grid-template-rows:repeat(4,1fr)">
+        <div class="minicard"><h4>Presupuesto desperdiciado</h4><p>Descuentos a quien ya iba a comprar.</p></div>
+        <div class="minicard"><h4>Baja conversión</h4><p>Mensajes irrelevantes para gran parte de la audiencia.</p></div>
+        <div class="minicard"><h4>Fuga de clientes</h4><p>Sin detección preventiva de clientes valiosos inactivos.</p></div>
+        <div class="minicard"><h4>B2B subutilizado</h4><p>No se aprovecha el potencial de los grandes compradores.</p></div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>02</b> / 11</div>
+  </section>
+
+  <!-- ====== 3 · OBJETIVO + ORGANIZACIÓN ====== -->
+  <section class="slide" id="s3">
+    <div class="kick"><i class="sq"></i><span>02 / Introducción — Objetivo y método</span></div>
+    <div class="title-wrap" data-r style="margin-top:6px">
+      <div class="eyebrow">Objetivo del proyecto</div>
+      <h2 style="max-width:1040px">Segmentar a los clientes en grupos homogéneos por su comportamiento de compra, para diseñar estrategias de marketing <span class="am">personalizadas y accionables</span>.</h2>
+    </div>
+    <div class="chips" data-r style="margin:6px 0 26px">
+      <span class="chip">Aprendizaje <b>no supervisado</b></span>
+      <span class="chip">Metodología <b>RFM</b></span>
+      <span class="chip"><b>Clustering</b> (K-Means · Jerárquico · DBSCAN · GMM)</span>
+      <span class="chip">Caso real · datos <b>sintéticos</b></span>
+    </div>
+    <div data-r style="margin-top:auto">
+      <div class="ph" style="font-family:var(--fmono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);margin-bottom:12px">Organización del proyecto — reproducible de punta a punta</div>
+      <div class="spec">
+        <div class="cell"><div class="k">Versionado</div><div class="v"><b>Git</b> · historial y trazabilidad del código</div></div>
+        <div class="cell"><div class="k">Estructura</div><div class="v"><b>Cookiecutter</b> Data Science</div></div>
+        <div class="cell"><div class="k">Pipeline</div><div class="v"><b>make all</b> · notebooks 1→5 · semilla fija</div></div>
+        <div class="cell"><div class="k">Código</div><div class="v">Paquete <b>Python</b> modular + <b>pytest</b></div></div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>03</b> / 11</div>
+  </section>
+
+  <!-- ====== 4 · DATASET ====== -->
+  <section class="slide" id="s4">
+    <div class="kick"><i class="sq"></i><span>03 / El dataset y su origen</span></div>
+    <div class="title-wrap" data-r><h2>Sintético, pero <span class="am">fiel a la realidad</span> del rubro.</h2></div>
+    <div class="stats" data-r style="margin-bottom:22px">
+      <div class="stat" style="--accent:var(--amber)"><div class="num">50.730</div><div class="lab">transacciones</div></div>
+      <div class="stat" style="--accent:var(--steel)"><div class="num">5.000</div><div class="lab">clientes únicos</div></div>
+      <div class="stat" style="--accent:var(--active)"><div class="num">9</div><div class="lab">variables de negocio</div></div>
+      <div class="stat" style="--accent:var(--champ)"><div class="num">24</div><div class="lab">meses · 2024–2026</div></div>
+    </div>
+    <div class="cols c-2" style="flex:1">
+      <div class="panel" data-r>
+        <div class="ph">Origen y recopilación</div>
+        <p class="lead">Por confidencialidad de la empresa real (Río Grande), el dataset se <b style="color:var(--ink)">generó en Python</b> con semilla fija <span class="mono" style="color:var(--amber)">rng(42)</span> — reproducible y sin datos sensibles.</p>
+        <p class="lead" style="margin-top:14px">No son datos al azar: <b style="color:var(--ink)">replican dinámicas observadas</b> en la provincia.</p>
+        <p class="note" style="margin-top:16px">Las variables RFM no vienen en el CSV: se derivan agrupando las transacciones por cliente.</p>
+      </div>
+      <div class="panel" data-r>
+        <div class="ph">Dinámicas reales modeladas</div>
+        <ul class="blist">
+          <li><span><b style="color:var(--ink)">Inflación en pesos</b> — el ticket nominal se multiplica ~×2,7 en 24 meses.</span></li>
+          <li><span><b style="color:var(--ink)">Estacionalidad austral</b> — pico en verano (dic–mar), pozo en invierno.</span></li>
+          <li><span><b style="color:var(--ink)">Concentración Pareto</b> — el 20% de clientes ≈ 81% de la facturación.</span></li>
+          <li><span><b style="color:var(--ink)">Segmentos B2B / B2C latentes</b> — sin etiquetar: hay que descubrirlos.</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>04</b> / 11</div>
+  </section>
+
+  <!-- ====== 5 · PREPROCESAMIENTO + EDA ====== -->
+  <section class="slide" id="s5">
+    <div class="kick"><i class="sq"></i><span>04 / Del dato crudo al perfil RFM</span></div>
+    <div class="title-wrap" data-r style="margin-bottom:16px"><h2>Limpieza, ingeniería de variables y <span class="am">deflactación</span>.</h2></div>
+    <div class="pipe" data-r style="flex:0 0 auto;margin-bottom:20px">
+      <div class="step"><div class="no">01</div><h4>Limpieza</h4><p>Drop de nulos críticos, neteo de devoluciones, 75 duplicados.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">02</div><h4>Normalización</h4><p>Localidad y medio de pago a forma canónica (typos, mayúsculas).</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">03</div><h4>Outliers B2B</h4><p>~150 compras de obra (hasta $37 M): se conservan, son legítimas.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">04</div><h4>Features RFM</h4><p>Recency, Frequency, Monetary + variables complementarias.</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:var(--steel-deep)"><div class="no" style="color:var(--steel)">05</div><h4>Deflactación</h4><p>Ajuste por inflación: clientes nuevos y antiguos comparables.</p></div>
+    </div>
+    <div class="cols c-64" style="flex:1">
+      <div class="panel" data-r>
+        <div class="ph">Lo que vimos en los datos (EDA)</div>
+        <div class="cardgrid cg-2">
+          <div class="minicard" style="border-left-color:var(--steel)"><h4>Pareto confirmado</h4><p>La facturación se concentra en muy pocos clientes → justifica segmentar.</p></div>
+          <div class="minicard" style="border-left-color:var(--steel)"><h4>RFM puro alcanza</h4><p>El ticket = M/F genera multicolinealidad → fuera del modelo.</p></div>
+          <div class="minicard" style="border-left-color:var(--steel)"><h4>Deflactar es clave</h4><p>Sin ajustar, los clientes recientes parecen más valiosos de lo que son.</p></div>
+          <div class="minicard" style="border-left-color:var(--steel)"><h4>B2B ≠ B2C</h4><p>Brecha de varios órdenes de magnitud en monto y frecuencia.</p></div>
+        </div>
+      </div>
+      <div class="panel dark" data-r style="display:flex;flex-direction:column;justify-content:center">
+        <div class="ph">Resultado del pipeline</div>
+        <div style="display:flex;align-items:center;gap:14px;font-family:var(--fmono);font-size:15px;color:var(--ink2);margin-top:6px">
+          <span><b style="color:var(--ink);font-size:19px">50.730</b><br><span style="font-size:11px;color:var(--muted)">crudas</span></span>
+          <span style="color:var(--faint)">→</span>
+          <span><b style="color:var(--ink);font-size:19px">49.909</b><br><span style="font-size:11px;color:var(--muted)">limpias</span></span>
+          <span style="color:var(--faint)">→</span>
+          <span><b style="color:var(--amber);font-size:26px">4.992</b><br><span style="font-size:11px;color:var(--muted)">clientes RFM</span></span>
+        </div>
+        <p class="lead" style="margin-top:20px;font-size:15px">Cada cliente queda descrito por su <b style="color:var(--ink)">Recencia</b>, <b style="color:var(--ink)">Frecuencia</b> y <b style="color:var(--ink)">Monto</b> deflactado.</p>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>05</b> / 11</div>
+  </section>
+
+  <!-- ====== 6 · SELECCIÓN DE K ====== -->
+  <section class="slide" id="s6">
+    <div class="kick"><i class="sq"></i><span>05 / Desarrollo del modelo — ¿cuántos grupos?</span></div>
+    <div class="title-wrap" data-r style="margin-bottom:14px"><h2>El número de clusters: <span class="am">criterio de negocio</span>, no solo métrica.</h2></div>
+    <div class="cols c-58" style="flex:1">
+      <div class="panel" data-r style="display:flex;flex-direction:column">
+        <div class="ph">Método del codo + coeficiente de silueta</div>
+        <div class="chartbox"><div id="ch-elbow" class="chart"></div></div>
+      </div>
+      <div data-r style="display:flex;flex-direction:column;gap:16px">
+        <div class="panel" style="flex:1">
+          <div class="ph">La decisión</div>
+          <p class="lead" style="font-size:15.5px">La silueta es máxima cerca de <b style="color:var(--ink)">K = 2–3</b> (~0,42), pero esas particiones son demasiado gruesas: separan poco más que <span style="color:var(--muted)">activos de inactivos</span>.</p>
+          <p class="lead" style="font-size:15.5px;margin-top:12px"><b style="color:var(--amber)">K = 4</b> es el estándar RFM: mantiene una silueta sólida (0,37) y entrega <b style="color:var(--ink)">4 segmentos accionables</b>.</p>
+        </div>
+        <div class="panel" style="flex:0 0 auto">
+          <div class="ph">4 algoritmos comparados</div>
+          <div class="chips" style="margin-top:2px">
+            <span class="chip"><b>K-Means</b></span><span class="chip">Jerárquico</span>
+            <span class="chip">DBSCAN</span><span class="chip">GMM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>06</b> / 11</div>
+  </section>
+
+  <!-- ====== 7 · EVALUACIÓN ====== -->
+  <section class="slide" id="s7">
+    <div class="kick"><i class="sq"></i><span>06 / Evaluación y validación del modelo</span></div>
+    <div class="title-wrap" data-r style="margin-bottom:14px"><h2>Tres métodos distintos, <span class="am">la misma estructura</span>.</h2></div>
+    <div class="cols c-58" style="flex:1">
+      <div class="panel" data-r style="display:flex;flex-direction:column">
+        <div class="ph">Coeficiente de silueta por algoritmo (K=4)</div>
+        <div class="chartbox"><div id="ch-sil" class="chart"></div></div>
+        <p class="note">* DBSCAN se evalúa sin outliers; tiende a 1 cluster dominante + ruido — los datos son un gradiente continuo.</p>
+      </div>
+      <div data-r style="display:flex;flex-direction:column;gap:16px">
+        <div class="panel" style="flex:1">
+          <div class="ph">Validación cruzada — concordancia (ARI)</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:var(--ink2)">K-Means ↔ GMM</span><span class="mono" style="color:var(--amber);font-size:17px;font-weight:500">0.65</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:var(--ink2)">K-Means ↔ Jerárquico</span><span class="mono" style="color:var(--amber);font-size:17px;font-weight:500">0.54</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:var(--ink2)">Jerárquico ↔ GMM</span><span class="mono" style="color:var(--ink2);font-size:17px;font-weight:500">0.42</span></div>
+          </div>
+          <p class="lead" style="font-size:13.5px;margin-top:14px;color:var(--muted)">Que varios algoritmos coincidan en la estructura confirma que la segmentación es <b style="color:var(--ink)">real, no un artefacto</b> de un único método.</p>
+        </div>
+        <div class="panel dark" style="flex:0 0 auto;border-left:3px solid var(--amber)">
+          <div class="ph" style="color:var(--amber)">Modelo de producción</div>
+          <p class="lead" style="font-size:15px"><b style="color:var(--ink)">K-Means</b> — simple, interpretable y con <span class="mono">.predict()</span> para clasificar clientes nuevos.</p>
+        </div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>07</b> / 11</div>
+  </section>
+
+  <!-- ====== 8 · RESULTADO: 4 SEGMENTOS ====== -->
+  <section class="slide" id="s8">
+    <div class="kick"><i class="sq"></i><span>07 / Resultados — la segmentación</span></div>
+    <div class="title-wrap" data-r style="margin-bottom:12px"><h2>El modelo separó la cartera en <span class="am">4 segmentos</span> de comportamiento.</h2></div>
+    <div class="cols c-64" style="flex:1">
+      <div class="panel" data-r style="display:flex;flex-direction:column">
+        <div class="ph">4.992 clientes · Recencia × Frecuencia · tamaño ∝ monto</div>
+        <div class="chartbox"><div id="ch-scatter" class="chart"></div></div>
+      </div>
+      <div class="segleg" data-r>
+        <div class="segrow" style="border-left-color:var(--champ)"><span class="nm" style="color:var(--champ)">Campeones (B2B)</span><span class="meta"><b>691</b> · 13,8%<br>compran seguido, mucho</span></div>
+        <div class="segrow" style="border-left-color:var(--active)"><span class="nm" style="color:var(--active)">Activos Recientes</span><span class="meta"><b>1.697</b> · 34,0%<br>recientes, frecuencia media</span></div>
+        <div class="segrow" style="border-left-color:var(--risk)"><span class="nm" style="color:var(--risk)">Esporádicos / Riesgo</span><span class="meta"><b>1.694</b> · 33,9%<br>se están enfriando</span></div>
+        <div class="segrow" style="border-left-color:var(--lost)"><span class="nm" style="color:var(--lost)">Perdidos</span><span class="meta"><b>910</b> · 18,2%<br>inactivos hace +500 días</span></div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>08</b> / 11</div>
+  </section>
+
+  <!-- ====== 9 · PARETO ====== -->
+  <section class="slide" id="s9">
+    <div class="kick"><i class="sq"></i><span>08 / Resultados — el hallazgo</span></div>
+    <div class="cols c-2" style="flex:1;align-items:center">
+      <div data-r>
+        <div class="eyebrow">La lectura clave</div>
+        <div class="bignum"><span class="a">14%</span><span class="arr">→</span><span class="b">73%</span></div>
+        <h2 style="font-size:32px;margin-top:18px;max-width:520px">El <span style="color:var(--champ)">14% de los clientes</span> (Campeones B2B) explica el <span class="am">73% de la facturación</span> real.</h2>
+        <p class="lead" style="margin-top:18px;max-width:500px">Un Pareto comercial muy marcado que responde a la pregunta inicial y <b style="color:var(--ink)">justifica un trato de marketing diferenciado</b> por segmento.</p>
+      </div>
+      <div class="panel" data-r style="height:88%;display:flex;flex-direction:column">
+        <div class="ph">Participación por segmento</div>
+        <div class="chartbox"><div id="ch-pareto" class="chart"></div></div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>09</b> / 11</div>
+  </section>
+
+  <!-- ====== 10 · ESTRATEGIAS ====== -->
+  <section class="slide" id="s10">
+    <div class="kick"><i class="sq"></i><span>09 / Del dato a la acción</span></div>
+    <div class="title-wrap" data-r style="margin-bottom:18px"><h2>Una estrategia <span class="am">distinta</span> para cada segmento.</h2></div>
+    <div class="stratgrid" data-r>
+
+      <div class="strat" style="--c:var(--champ)">
+        <div class="tag">Objetivo · Retener — 73,1% facturación</div>
+        <h4>Campeones (B2B)</h4>
+        <div class="perfil">691 cli · 13,8% · compra c/~67 d · ticket ~$272k · 10 rubros</div>
+        <div class="sec">
+          <div class="sl">Acciones</div>
+          <ul>
+            <li>Gestor de cuenta dedicado (KAM) y atención prioritaria.</li>
+            <li>Cuenta corriente + descuentos por volumen escalonados.</li>
+            <li>Precios de contrato anual y entrega programada a obra.</li>
+            <li>Alerta de caída de frecuencia → contacto proactivo.</li>
+          </ul>
+        </div>
+        <div class="sec">
+          <div class="kv"><span class="t">Canal</span>Visita comercial + WhatsApp del KAM.</div>
+          <div class="kv"><span class="t">Oferta gancho</span>Pricing por contrato y trato VIP.</div>
+        </div>
+        <div class="foot2">
+          <div class="kpi"><b>Retención &gt; 95%</b> · NPS · share-of-wallet</div>
+          <div class="prow"><span class="pl">Prioridad de inversión</span><span class="pri"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+        </div>
+      </div>
+
+      <div class="strat" style="--c:var(--active)">
+        <div class="tag">Objetivo · Crecer — 19,0% facturación</div>
+        <h4>Activos Recientes</h4>
+        <div class="perfil">1.697 cli · 34,0% · última compra ~74 d · ticket ~$76k</div>
+        <div class="sec">
+          <div class="sl">Acciones</div>
+          <ul>
+            <li>Cross-sell y up-sell de complementarios por rubro.</li>
+            <li>Programa de puntos con beneficios por escalón.</li>
+            <li>Recompra programada (reposición de insumos).</li>
+            <li>Detectar candidatos B2B y derivar a cuenta.</li>
+          </ul>
+        </div>
+        <div class="sec">
+          <div class="kv"><span class="t">Canal</span>Email + push de la app + remarketing.</div>
+          <div class="kv"><span class="t">Oferta gancho</span>Kits/combos y envío bonificado.</div>
+        </div>
+        <div class="foot2">
+          <div class="kpi"><b>↑ frecuencia y ticket</b> · % que migra a Campeones</div>
+          <div class="prow"><span class="pl">Prioridad de inversión</span><span class="pri"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div>
+        </div>
+      </div>
+
+      <div class="strat" style="--c:var(--risk)">
+        <div class="tag">Objetivo · Reactivar — 6,9% facturación</div>
+        <h4>Esporádicos / Riesgo</h4>
+        <div class="perfil">1.694 cli · 33,9% · última compra ~287 d · ticket ~$64k</div>
+        <div class="sec">
+          <div class="sl">Acciones</div>
+          <ul>
+            <li>Descuento personalizado con vigencia corta (urgencia).</li>
+            <li>Encuesta breve para detectar el motivo del enfriamiento.</li>
+            <li>Priorizar con GMM a los clientes “en frontera”.</li>
+            <li>Recordatorio al inicio de la temporada de obra.</li>
+          </ul>
+        </div>
+        <div class="sec">
+          <div class="kv"><span class="t">Canal</span>Email + llamada del comercial.</div>
+          <div class="kv"><span class="t">Oferta gancho</span>Cupón por rubro habitual del cliente.</div>
+        </div>
+        <div class="foot2">
+          <div class="kpi"><b>% reactivados en 60 d</b> · costo de reactivación</div>
+          <div class="prow"><span class="pl">Prioridad de inversión</span><span class="pri"><i class="on"></i><i class="on"></i><i></i><i></i></span></div>
+        </div>
+      </div>
+
+      <div class="strat" style="--c:var(--lost)">
+        <div class="tag">Objetivo · Recuperar — 1,0% facturación</div>
+        <h4>Perdidos</h4>
+        <div class="perfil">910 cli · 18,2% · inactivos +540 d · ~2 compras</div>
+        <div class="sec">
+          <div class="sl">Acciones</div>
+          <ul>
+            <li>Win-back automatizado de bajo costo (novedades + cupón).</li>
+            <li>Producto gancho de alta rotación como anzuelo.</li>
+            <li>Depurar contactos inactivos para no inflar costos.</li>
+            <li>Sin presupuesto premium ni esfuerzo comercial.</li>
+          </ul>
+        </div>
+        <div class="sec">
+          <div class="kv"><span class="t">Canal</span>Email masivo / automatización.</div>
+          <div class="kv"><span class="t">Oferta gancho</span>Cupón de “bienvenida de regreso”.</div>
+        </div>
+        <div class="foot2">
+          <div class="kpi"><b>CTR</b> · costo por cliente recuperado</div>
+          <div class="prow"><span class="pl">Prioridad de inversión</span><span class="pri"><i class="on"></i><i></i><i></i><i></i></span></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>10</b> / 11</div>
+  </section>
+
+  <!-- ====== 11 · CONCLUSIONES ====== -->
+  <section class="slide" id="s11">
+    <div class="kick"><i class="sq"></i><span>10 / Conclusiones y recomendaciones</span></div>
+    <div class="cols c-2" style="flex:1">
+      <div data-r style="display:flex;flex-direction:column">
+        <div class="title-wrap" style="margin-bottom:22px"><h2 style="font-size:38px">Del modelo a la <span class="am">decisión comercial</span>.</h2></div>
+        <div class="concl">
+          <div class="item"><div class="n">01</div><div class="tx"><b>K = 4 entrega segmentos coherentes y accionables</b>, validados por tres algoritmos independientes.</div></div>
+          <div class="item"><div class="n">02</div><div class="tx">El modelo <b>cuantifica el Pareto</b>: 15% de clientes = 77% de la facturación real.</div></div>
+          <div class="item"><div class="n">03</div><div class="tx">Cada grupo tiene <b>nombre comercial y una acción concreta</b> de marketing.</div></div>
+        </div>
+        <div class="future">
+          <div class="k">Trabajo futuro</div>
+          <p>Usar los clusters como etiquetas para entrenar un <b style="color:var(--ink)">clasificador supervisado</b> (Random Forest / XGBoost) y segmentar clientes nuevos en tiempo real.</p>
+        </div>
+      </div>
+      <div class="panel dark thanks" data-r>
+        <div class="eyebrow" style="color:var(--amber)">Reproducible y transferible</div>
+        <h2 style="font-size:34px;margin:10px 0 18px">Listo para aplicarse con datos reales de cualquier empresa del rubro.</h2>
+        <p class="lead">Pipeline versionado, modular y documentado — del CSV crudo a la estrategia, con un solo comando.</p>
+        <div style="margin-top:auto;padding-top:28px;border-top:1px solid var(--line);width:100%">
+          <div style="font-family:var(--fdisplay);font-weight:700;font-size:22px;color:var(--ink)">Gracias.</div>
+          <div class="mono" style="font-size:13px;color:var(--muted);margin-top:6px;letter-spacing:.08em">Ian Gallego · Politécnico Malvinas Argentinas · 2026</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">Segmentación de Clientes · Ian Gallego</div><div class="pageno"><b>11</b> / 11</div>
+  </section>
+
+</div>
+
+<div id="dots"></div>
+<div id="hint">← →  o  espacio para navegar</div>
+
+<script src="data.js"></script>
+<script>
+/* ============ DATA ============ */
+const COL={champ:'#EFB53E',active:'#34B79B',risk:'#EC7A3C',lost:'#7E909A'};
+const SEG=[
+ {key:'champ',name:'Campeones (B2B)',n:691,pct:13.8,fact:73.1},
+ {key:'active',name:'Activos Recientes',n:1697,pct:34.0,fact:19.0},
+ {key:'risk',name:'Esporádicos / Riesgo',n:1694,pct:33.9,fact:6.9},
+ {key:'lost',name:'Perdidos',n:910,pct:18.2,fact:1.0},
+];
+const ELBOW={K:[2,3,4,5,6,7,8,9,10],
+ inertia:[7703.79,4743.75,3742.04,2866.39,2166.67,1855.60,1610.49,1470.09,1342.75],
+ sil:[0.4206,0.4231,0.3682,0.3886,0.4105,0.3932,0.3660,0.3598,0.3599]};
+const METRICS=[
+ {name:'K-Means',sil:0.368,prod:true},
+ {name:'Jerárquico',sil:0.342},
+ {name:'GMM',sil:0.312},
+ {name:'DBSCAN',sil:0.276,star:true},
+];
+
+/* ============ helpers ============ */
+const NS='http://www.w3.org/2000/svg';
+const lin=(d0,d1,r0,r1)=>v=>r0+(v-d0)/(d1-d0)*(r0===r1?0:(r1-r0));
+const P=(pts)=>pts.map(p=>p.join(',')).join(' ');
+
+/* ============ COVER ART (mini bubble field) ============ */
+function coverArt(){
+  const svg=document.getElementById('coverArt');if(!svg)return;
+  const W=520,H=720;let s='';
+  // faint grid already on stage; add scattered bubbles echoing segments
+  const segs=['lost','risk','active','champ'],weights=[40,46,40,20];
+  let html='';
+  segs.forEach((k,gi)=>{
+    for(let i=0;i<weights[gi];i++){
+      const cx=60+Math.random()*400, cy=60+Math.random()*600;
+      const r=2+Math.random()*(k==='champ'?9:5);
+      const op=k==='champ'?0.9:0.18+Math.random()*0.4;
+      html+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${COL[k]}" opacity="${op.toFixed(2)}"/>`;
+    }
+  });
+  // crosshair ticks
+  html+=`<g stroke="rgba(255,255,255,.18)" stroke-width="1">
+    <line x1="40" y1="40" x2="64" y2="40"/><line x1="40" y1="40" x2="40" y2="64"/>
+    <line x1="480" y1="680" x2="456" y2="680"/><line x1="480" y1="680" x2="480" y2="656"/></g>`;
+  html+=`<text x="40" y="694" fill="rgba(255,255,255,.32)" font-family="PlexMono,monospace" font-size="11" letter-spacing="2">R × F × M</text>`;
+  svg.innerHTML=html;
+}
+
+/* ============ ELBOW + SILHOUETTE ============ */
+function chartElbow(){
+  const box=document.getElementById('ch-elbow');if(!box)return;
+  const W=620,H=340,pad={l:52,r:54,t:24,b:46};
+  const x=lin(2,10,pad.l,W-pad.r);
+  const yI=lin(0,8200,H-pad.b,pad.t);
+  const yS=lin(0.34,0.445,H-pad.b,pad.t);
+  let g='';
+  // grid + left axis (inertia)
+  [0,2000,4000,6000,8000].forEach(t=>{g+=`<line x1="${pad.l}" y1="${yI(t)}" x2="${W-pad.r}" y2="${yI(t)}" stroke="rgba(255,255,255,.06)"/>
+    <text x="${pad.l-9}" y="${yI(t)+4}" text-anchor="end" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10.5">${t}</text>`;});
+  // right axis (silhouette)
+  [0.35,0.38,0.41,0.44].forEach(t=>{g+=`<text x="${W-pad.r+9}" y="${yS(t)+4}" text-anchor="start" fill="#C68A3C" font-family="PlexMono,monospace" font-size="10.5">${t.toFixed(2)}</text>`;});
+  // x labels
+  ELBOW.K.forEach(k=>{g+=`<text x="${x(k)}" y="${H-pad.b+20}" text-anchor="middle" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10.5">${k}</text>`;});
+  g+=`<text x="${(pad.l+W-pad.r)/2}" y="${H-6}" text-anchor="middle" fill="#8194A0" font-family="PlexMono,monospace" font-size="10.5" letter-spacing="1">NÚMERO DE CLUSTERS (K)</text>`;
+  // K=4 band
+  g+=`<rect x="${x(3.78)}" y="${pad.t}" width="${x(4.22)-x(3.78)}" height="${H-pad.b-pad.t}" fill="rgba(242,163,60,.10)"/>
+      <line x1="${x(4)}" y1="${pad.t}" x2="${x(4)}" y2="${H-pad.b}" stroke="#F2A33C" stroke-width="1.4" stroke-dasharray="4 4"/>
+      <text x="${x(4)}" y="${pad.t-7}" text-anchor="middle" fill="#FFC061" font-family="PlexMono,monospace" font-size="11" font-weight="500">K = 4</text>`;
+  // inertia line (steel)
+  g+=`<polyline fill="none" stroke="#56A8CC" stroke-width="2.4" points="${P(ELBOW.K.map((k,i)=>[x(k),yI(ELBOW.inertia[i])]))}"/>`;
+  ELBOW.K.forEach((k,i)=>g+=`<circle cx="${x(k)}" cy="${yI(ELBOW.inertia[i])}" r="3.2" fill="#56A8CC"/>`);
+  // silhouette line (amber)
+  g+=`<polyline fill="none" stroke="#F2A33C" stroke-width="2.4" points="${P(ELBOW.K.map((k,i)=>[x(k),yS(ELBOW.sil[i])]))}"/>`;
+  ELBOW.K.forEach((k,i)=>g+=`<circle cx="${x(k)}" cy="${yS(ELBOW.sil[i])}" r="3.2" fill="#F2A33C"/>`);
+  // legend
+  g+=`<g font-family="PlexMono,monospace" font-size="11">
+    <rect x="${pad.l+6}" y="${pad.t+2}" width="11" height="3" fill="#56A8CC"/><text x="${pad.l+22}" y="${pad.t+7}" fill="#C2D0D2">Inercia (codo)</text>
+    <rect x="${pad.l+140}" y="${pad.t+2}" width="11" height="3" fill="#F2A33C"/><text x="${pad.l+156}" y="${pad.t+7}" fill="#C2D0D2">Silueta</text></g>`;
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+
+/* ============ SILHOUETTE BARS ============ */
+function chartSil(){
+  const box=document.getElementById('ch-sil');if(!box)return;
+  const W=560,H=250,padL=128,padR=70,top=22,rh=40,gap=14;
+  const x=lin(0,0.42,padL,W-padR);
+  let g='';
+  // axis ticks
+  [0,0.1,0.2,0.3,0.4].forEach(t=>{g+=`<line x1="${x(t)}" y1="${top-6}" x2="${x(t)}" y2="${top+4*(rh+gap)-gap+6}" stroke="rgba(255,255,255,.06)"/>
+    <text x="${x(t)}" y="${top+4*(rh+gap)-gap+22}" text-anchor="middle" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10">${t.toFixed(1)}</text>`;});
+  METRICS.forEach((m,i)=>{
+    const y=top+i*(rh+gap);
+    const c=m.prod?'#F2A33C':(m.star?'#5C6F79':'#56A8CC');
+    g+=`<text x="${padL-12}" y="${y+rh/2+5}" text-anchor="end" fill="${m.prod?'#FFC061':'#C2D0D2'}" font-family="Archivo,sans-serif" font-weight="600" font-size="15">${m.name}</text>`;
+    g+=`<rect x="${padL}" y="${y}" width="${x(0.42)-padL}" height="${rh}" fill="rgba(255,255,255,.04)" rx="4"/>`;
+    g+=`<rect x="${padL}" y="${y}" width="${Math.max(2,x(m.sil)-padL)}" height="${rh}" fill="${c}" rx="4"${m.prod?' filter="url(#gl)"':''}/>`;
+    g+=`<text x="${x(m.sil)+(m.star?14:10)}" y="${y+rh/2+5}" fill="${m.star?'#7E909A':'#ECF2F2'}" font-family="PlexMono,monospace" font-size="13.5" font-weight="500">${m.sil.toFixed(3)}${m.star?' *':''}</text>`;
+    if(m.prod)g+=`<text x="${padL+10}" y="${y+rh/2+5}" fill="#0C1316" font-family="PlexMono,monospace" font-size="10.5" font-weight="600" letter-spacing="1">PRODUCCIÓN</text>`;
+  });
+  const defs=`<defs><filter id="gl" x="-20%" y="-50%" width="140%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#F2A33C" flood-opacity="0.55"/></filter></defs>`;
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${defs}${g}</svg>`;
+}
+
+/* ============ SCATTER (4.992 clientes) ============ */
+function chartScatter(){
+  const box=document.getElementById('ch-scatter');if(!box||!window.CLIENTES)return;
+  const W=720,H=470,pad={l:56,r:18,t:16,b:46};
+  const pts=CLIENTES.points; // [R,F,Mlog,seg]
+  const x=lin(0,760,pad.l,W-pad.r);
+  const y=lin(0,72,H-pad.b,pad.t);
+  const rr=lin(7.3,17.5,1.6,5.6);
+  let g='';
+  // grid
+  [0,200,400,600].forEach(t=>{g+=`<line x1="${x(t)}" y1="${pad.t}" x2="${x(t)}" y2="${H-pad.b}" stroke="rgba(255,255,255,.05)"/>
+    <text x="${x(t)}" y="${H-pad.b+20}" text-anchor="middle" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10">${t}</text>`;});
+  [0,15,30,45,60].forEach(t=>{g+=`<line x1="${pad.l}" y1="${y(t)}" x2="${W-pad.r}" y2="${y(t)}" stroke="rgba(255,255,255,.05)"/>
+    <text x="${pad.l-9}" y="${y(t)+4}" text-anchor="end" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10">${t}</text>`;});
+  g+=`<text x="${(pad.l+W-pad.r)/2}" y="${H-6}" text-anchor="middle" fill="#8194A0" font-family="PlexMono,monospace" font-size="10.5" letter-spacing="1">RECENCIA — DÍAS DESDE LA ÚLTIMA COMPRA →</text>`;
+  g+=`<text transform="translate(15,${(pad.t+H-pad.b)/2}) rotate(-90)" text-anchor="middle" fill="#8194A0" font-family="PlexMono,monospace" font-size="10.5" letter-spacing="1">↑ FRECUENCIA DE COMPRA</text>`;
+  // draw order: lost, risk, active, champ
+  const order=['lost','risk','active','champ'];
+  order.forEach(k=>{
+    pts.forEach(p=>{ if(p[3]!==k)return;
+      g+=`<circle cx="${x(p[0]).toFixed(1)}" cy="${y(p[1]).toFixed(1)}" r="${rr(p[2]).toFixed(1)}" fill="${COL[k]}" opacity="${k==='champ'?0.8:0.5}"/>`;
+    });
+  });
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+
+/* ============ PARETO (tornado) ============ */
+function chartPareto(){
+  const box=document.getElementById('ch-pareto');if(!box)return;
+  const W=640,H=430,top=80,rh=56,gap=30;
+  const gutter=152, midL=W/2-gutter/2, midR=W/2+gutter/2;
+  const maxV=80, leftMax=midL-44, rightMax=W-midR-20;
+  const xl=v=>midL-(v/maxV)*leftMax;
+  const wl=v=>(v/maxV)*leftMax;
+  const wr=v=>(v/maxV)*rightMax;
+  const fmt=v=>v.toFixed(1).replace('.',',')+'%';
+  const NAME={champ:'Campeones',active:'Activos',risk:'Esporád.',lost:'Perdidos'};
+  const bottom=top+4*(rh+gap)-gap;
+  let g='';
+  // headers
+  g+=`<text x="${midL}" y="${top-30}" text-anchor="end" fill="#56A8CC" font-family="PlexMono,monospace" font-size="12" letter-spacing="1">% DE CLIENTES</text>`;
+  g+=`<text x="${midR}" y="${top-30}" text-anchor="start" fill="#F2A33C" font-family="PlexMono,monospace" font-size="12" letter-spacing="1">% DE FACTURACIÓN</text>`;
+  g+=`<line x1="${W/2}" y1="${top-18}" x2="${W/2}" y2="${bottom+10}" stroke="rgba(255,255,255,.12)"/>`;
+  SEG.forEach((s,i)=>{
+    const y=top+i*(rh+gap), cy=y+rh/2;
+    // left bar (clientes, steel)
+    g+=`<rect x="${xl(s.pct)}" y="${y}" width="${wl(s.pct)}" height="${rh}" fill="#3E8AAA" rx="3"/>`;
+    g+=`<text x="${xl(s.pct)-9}" y="${cy+5}" text-anchor="end" fill="#C2D0D2" font-family="PlexMono,monospace" font-size="14">${fmt(s.pct)}</text>`;
+    // right bar (facturación)
+    g+=`<rect x="${midR}" y="${y}" width="${wr(s.fact)}" height="${rh}" fill="${COL[s.key]}" rx="3"/>`;
+    if(s.fact>=35){ // long bar → label inside, dark
+      g+=`<text x="${midR+wr(s.fact)-12}" y="${cy+5}" text-anchor="end" fill="#0C1316" font-family="PlexMono,monospace" font-size="14" font-weight="600">${fmt(s.fact)}</text>`;
+    }else{
+      g+=`<text x="${midR+wr(s.fact)+9}" y="${cy+5}" text-anchor="start" fill="#ECF2F2" font-family="PlexMono,monospace" font-size="14" font-weight="500">${fmt(s.fact)}</text>`;
+    }
+    // center label (name colored by segment + n below)
+    g+=`<text x="${W/2}" y="${cy-1}" text-anchor="middle" fill="${COL[s.key]}" font-family="Archivo,sans-serif" font-weight="600" font-size="14">${NAME[s.key]}</text>`;
+    g+=`<text x="${W/2}" y="${cy+15}" text-anchor="middle" fill="#5C6F79" font-family="PlexMono,monospace" font-size="10">${s.n}</text>`;
+  });
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+
+/* ============ NAV ============ */
+const stage=document.getElementById('stage');
+const slides=[...document.querySelectorAll('.slide')];
+const dotsBox=document.getElementById('dots');
+const prog=document.getElementById('prog');
+const hint=document.getElementById('hint');
+let cur=0;
+slides.forEach((_,i)=>{const b=document.createElement('button');b.onclick=()=>go(i);dotsBox.appendChild(b);});
+const dots=[...dotsBox.children];
+function go(i){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides[cur].classList.remove('active');
+  cur=i;
+  const sl=slides[cur];sl.classList.add('active');
+  // stagger reveals
+  sl.querySelectorAll('[data-r]').forEach((e,k)=>e.style.animationDelay=(60+k*80)+'ms');
+  dots.forEach((d,k)=>d.classList.toggle('on',k===cur));
+  prog.style.width=((cur+1)/slides.length*100)+'%';
+  if(cur>0&&hint)hint.style.opacity='0';
+}
+function next(){go(cur+1)} function prev(){go(cur-1)}
+addEventListener('keydown',e=>{
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+  else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+  else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+  else if(e.key==='f'||e.key==='F'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+});
+stage.addEventListener('click',e=>{const r=stage.getBoundingClientRect();(e.clientX-r.left)/r.width>0.42?next():prev();});
+
+/* ============ FIT TO VIEWPORT ============ */
+function fit(){const s=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit);
+
+/* ============ INIT ============ */
+if(/qa/.test(location.search))document.body.classList.add('qa');
+coverArt();chartElbow();chartSil();chartScatter();chartPareto();
+fit();
+function slideFromHash(){const m=(location.hash||'').match(/\d+/);return m?Math.max(0,Math.min(slides.length-1,(+m[0]-1))):0;}
+go(slideFromHash());
+addEventListener('hashchange',()=>go(slideFromHash()));
+setTimeout(()=>{if(hint&&cur===0)hint.style.opacity='0';},6000);
+</script>
+</body>
+</html>
