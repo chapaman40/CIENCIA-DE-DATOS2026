@@ -1,10 +1,8 @@
 # Data
-# CCDS ignora /data/ por defecto. La consigna exige subir el dataset al repo,
-# por eso versionamos data/raw/ (datos originales) y dejamos fuera de Git los
-# datos intermedios y procesados (se regeneran corriendo el código).
+# Versionamos data/raw/ (datos originales) y también data/interim/ y data/processed/
+# (datos derivados) para que el repositorio quede autocontenido y reproducible sin
+# tener que ejecutar todo el pipeline. Solo data/external/ queda fuera de Git.
 /data/external/*
-/data/interim/*
-/data/processed/*
 !/data/**/.gitkeep
 
 # Mac OS-specific storage files
