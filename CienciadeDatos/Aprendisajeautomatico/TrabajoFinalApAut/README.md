@@ -101,6 +101,8 @@ por ejemplo `1.0-ig-eda-y-limpieza.ipynb` (ig = Ian Gallego).
 │
 ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
 │   └── figures        <- Generated graphics and figures to be used in reporting
+     └── presentacion_html/ 
+     └──  video/ ← 🎬 ACÁ el video
 │
 ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
 │                         generated with `pip freeze > requirements.txt`
